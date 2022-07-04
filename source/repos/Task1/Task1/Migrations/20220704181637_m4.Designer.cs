@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Task1.Data;
 
@@ -11,9 +12,10 @@ using Task1.Data;
 namespace Task1.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20220704181637_m4")]
+    partial class m4
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -27,7 +29,7 @@ namespace Task1.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int?>("UserId")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Name");
@@ -62,16 +64,11 @@ namespace Task1.Migrations
                     b.Property<string>("StoreName")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
 
                     b.HasIndex("BrandName");
 
                     b.HasIndex("StoreName");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("Products");
                 });
@@ -206,7 +203,9 @@ namespace Task1.Migrations
                 {
                     b.HasOne("Task1.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -221,15 +220,9 @@ namespace Task1.Migrations
                         .WithMany("Products")
                         .HasForeignKey("StoreName");
 
-                    b.HasOne("Task1.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId");
-
                     b.Navigation("Brand");
 
                     b.Navigation("Store");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Task1.Models.Store", b =>

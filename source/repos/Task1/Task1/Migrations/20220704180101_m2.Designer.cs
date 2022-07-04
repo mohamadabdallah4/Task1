@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Task1.Data;
 
@@ -11,9 +12,10 @@ using Task1.Data;
 namespace Task1.Migrations
 {
     [DbContext(typeof(DataContext))]
-    partial class DataContextModelSnapshot : ModelSnapshot
+    [Migration("20220704180101_m2")]
+    partial class m2
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -27,7 +29,7 @@ namespace Task1.Migrations
                     b.Property<string>("Name")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int?>("UserId")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Name");
@@ -46,6 +48,7 @@ namespace Task1.Migrations
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
                     b.Property<string>("BrandName")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
 
                     b.Property<string>("ImagePath")
@@ -60,18 +63,14 @@ namespace Task1.Migrations
                         .HasColumnType("decimal(18,2)");
 
                     b.Property<string>("StoreName")
+                        .IsRequired()
                         .HasColumnType("nvarchar(450)");
-
-                    b.Property<int?>("UserId")
-                        .HasColumnType("int");
 
                     b.HasKey("Id");
 
                     b.HasIndex("BrandName");
 
                     b.HasIndex("StoreName");
-
-                    b.HasIndex("UserId");
 
                     b.ToTable("Products");
                 });
@@ -206,7 +205,9 @@ namespace Task1.Migrations
                 {
                     b.HasOne("Task1.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -215,21 +216,19 @@ namespace Task1.Migrations
                 {
                     b.HasOne("Task1.Models.Brand", "Brand")
                         .WithMany()
-                        .HasForeignKey("BrandName");
+                        .HasForeignKey("BrandName")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.HasOne("Task1.Models.Store", "Store")
                         .WithMany("Products")
-                        .HasForeignKey("StoreName");
-
-                    b.HasOne("Task1.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("StoreName")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Brand");
 
                     b.Navigation("Store");
-
-                    b.Navigation("User");
                 });
 
             modelBuilder.Entity("Task1.Models.Store", b =>

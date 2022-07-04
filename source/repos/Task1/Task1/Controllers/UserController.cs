@@ -94,11 +94,37 @@ namespace Task1.Controllers
         }
 
         [HttpPost("profilePicture")]
-        public ActionResult PostProfilePicture()
+        public ActionResult PostProfilePicture(IFormFile file)
         {
-            IFormFile file = Request.Form.Files.FirstOrDefault();
-            if (file == null) { return BadRequest("No file"); }
-            return Ok($"Received file {file.FileName} with size in bytes {file.Length}");
+            User? user = (User?) HttpContext.Items["User"];
+            if (user == null)
+            {
+                return Unauthorized();
+            }
+            try
+            {
+                //IFormFile file = Request.Form.Files.FirstOrDefault();
+
+                if (file == null) { return BadRequest("No file was provided"); }
+                if (file.Length > (2 * 1024 * 1024)) { return BadRequest("File size must be less than 2 MB"); }
+
+                var extension = Path.GetExtension(file.FileName).ToLower();
+                if (extension != ".jpg" && extension != ".png") { return BadRequest("File must be in jpg or png format"); }
+
+                string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", file.FileName);
+                var stream = new FileStream(uploadPath, FileMode.Create);
+                file.CopyTo(stream);
+                user.ImagePath = uploadPath;
+                _context.Users.Update(user);
+                _context.SaveChanges();
+
+                return Ok($"Received file {file.FileName} with size in bytes {file.Length}");
+            }
+            catch (Exception)
+            {
+                return BadRequest("An error occured with the file");
+            }
+            
         }
 
         [HttpPut("update")]

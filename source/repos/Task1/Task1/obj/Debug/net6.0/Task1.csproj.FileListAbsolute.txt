@@ -64,3 +64,7 @@ C:\Users\user\source\repos\Task1\Task1\bin\Debug\net6.0\Microsoft.IdentityModel.
 C:\Users\user\source\repos\Task1\Task1\bin\Debug\net6.0\MailKit.dll
 C:\Users\user\source\repos\Task1\Task1\bin\Debug\net6.0\MimeKit.dll
 C:\Users\user\source\repos\Task1\Task1\bin\Debug\net6.0\BouncyCastle.Crypto.dll
+C:\Users\user\source\repos\Task1\Task1\bin\Debug\net6.0\Microsoft.AspNetCore.JsonPatch.dll
+C:\Users\user\source\repos\Task1\Task1\bin\Debug\net6.0\Microsoft.AspNetCore.Mvc.NewtonsoftJson.dll
+C:\Users\user\source\repos\Task1\Task1\bin\Debug\net6.0\Newtonsoft.Json.dll
+C:\Users\user\source\repos\Task1\Task1\bin\Debug\net6.0\Newtonsoft.Json.Bson.dll

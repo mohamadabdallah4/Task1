@@ -4,23 +4,23 @@
 
 namespace Task1.Migrations
 {
-    public partial class NewMigration : Migration
+    public partial class m1 : Migration
     {
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "Name",
-                table: "Users");
+                name: "Id",
+                table: "StoreAddresses");
         }
 
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<string>(
-                name: "Name",
-                table: "Users",
-                type: "nvarchar(max)",
+            migrationBuilder.AddColumn<int>(
+                name: "Id",
+                table: "StoreAddresses",
+                type: "int",
                 nullable: false,
-                defaultValue: "");
+                defaultValue: 0);
         }
     }
 }
