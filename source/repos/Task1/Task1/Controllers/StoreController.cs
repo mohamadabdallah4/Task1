@@ -19,6 +19,7 @@ namespace Task1.Controllers
             User? user = (User?)HttpContext.Items["User"];
             if (user == null) { return Unauthorized(); }
             if (_context.Stores.Where(s => s.Name == storeName).Any()) { return BadRequest("The provided store name is taken"); }
+            if (_context.Stores.Where(s => s.User == user).Any()) { return BadRequest("You already own a store (only 1 store per user is allowed)"); }
             Brand? brand = await _context.Brands.FindAsync(brandName);
             if (brand == null) { return BadRequest("No such brand exists"); }
             Store store = new Store { Name = storeName, Brand = brand, User = user };
@@ -48,12 +49,26 @@ namespace Task1.Controllers
             }
         }
 
-        [HttpPost("editStoreAddress")]
+        [HttpPost("editStoreAddress")] // TEST THIS
         public IActionResult EditStoreAddress(string oldAddress, string newAddress)
         {
             User? user = (User?)HttpContext.Items["User"];
             if (user == null) { return Unauthorized(); }
-            return Ok();
+            Store? store = _context.Stores.Where(s => s.User == user).FirstOrDefault();
+            if (store == null) { return BadRequest("You do not own a store"); }
+            StoreAddress? storeAddress = _context.StoreAddresses.Where(sa => sa.AddressName == oldAddress && sa.Store == store).FirstOrDefault();
+            if (storeAddress == null) { return NotFound("Address was not found!"); }
+            try
+            {
+                storeAddress.AddressName = newAddress;
+                _context.StoreAddresses.Update(storeAddress);
+                _context.SaveChanges();
+                return Ok($"Address ({oldAddress}) has been updated to ({newAddress}) for store ({store.Name})");
+            }
+            catch (Exception e)
+            {
+                return BadRequest(e);
+            }
         }
 
         [HttpGet("getAddresses")]

@@ -26,8 +26,8 @@ namespace Task1.Controllers
             _jwtUtils = jwtUtils;
         }
 
-        [HttpPost("setPassword")]
-        public ActionResult SetPassword([FromBody] NewPasswordRequest request)
+        [HttpPost("changePassword")]
+        public ActionResult ChangePassword([FromBody] NewPasswordRequest request)
         {
             User? user = _context.Users.Where(x => x.Email == request.Email).FirstOrDefault();
             if (user == null) { return BadRequest("User not found!"); }
@@ -50,19 +50,27 @@ namespace Task1.Controllers
             string RandomPassword = _userService.GeneratePassword();
 
             User user = new User { FirstName = request.FirstName, LastName = request.LastName, Email = request.Email, Password = BCrypt.Net.BCrypt.HashPassword(RandomPassword) };
-
-            bool emailSent = _emailService.SendEmail(new EmailRequest { To = user.Email, Subject = "Registration successful", Body = $"Successfully registered {user.Email} with temporary password {RandomPassword}" });
-            if (emailSent)
+            try
             {
-                await _context.Users.AddAsync(user);
-                await _context.UserPasswords.AddAsync(new UserPassword { Email = user.Email, Password = user.Password });
+                _context.Users.Add(user);
+                _context.UserPasswords.Add(new UserPassword { Email = user.Email, Password = user.Password });
                 await _context.SaveChangesAsync();
-                return Ok(new { message = "Successfully registered" });
+
+                bool emailSent = _emailService.SendEmail(new EmailRequest { To = user.Email, Subject = "Registration successful", Body = $"Successfully registered {user.Email} with temporary password {RandomPassword}" });
+                if (emailSent)
+                {
+                    return Ok(new { message = "Successfully registered" });
+                }
+                else
+                {
+                    return BadRequest(new { message = "Could not register user!" });
+                }
             }
-            else
+            catch (Exception e)
             {
-                return BadRequest(new { message = "Could not register user!" });
+                return BadRequest(e);
             }
+            
         }
 
         [HttpPost("authenticate")]
@@ -76,24 +84,18 @@ namespace Task1.Controllers
         }
 
         [HttpPut("confirmNewEmail")]
-        public ActionResult ConfirmNewEmail([FromBody] EmailConfirmationRequest request)
+        public async Task<ActionResult> ConfirmNewEmail([Required] string confirmationCode, [Required] string newEmail)
         {
-            UnconfirmedUser? unconfirmedUser = _context.UnconfirmedUsers.Where(x => x.Email == request.NewEmail).FirstOrDefault();
+            User? unconfirmedUser = _context.Users.Where(x => x.Email == newEmail).FirstOrDefault();
             if (unconfirmedUser == null) { return BadRequest("This email is not unconfirmed"); }
-            if (request.ConfirmationCode != unconfirmedUser.ConfirmationCode) { return BadRequest("Incorrect confirmation code, please check your email to get the correct one"); }
-            _context.Users.Add(new User
-            {
-                Email = request.NewEmail,
-                FirstName = unconfirmedUser.FirstName,
-                LastName = unconfirmedUser.LastName,
-                Password = unconfirmedUser.Password
-            });
-            _context.UnconfirmedUsers.Remove(unconfirmedUser);
-            _context.SaveChanges();
+            if (confirmationCode != unconfirmedUser.ConfirmationCode) { return BadRequest("Incorrect confirmation code, please check your email to get the correct one"); }
+            unconfirmedUser.ConfirmationCode = null;
+            unconfirmedUser.Confirmed = true;
+            await _context.SaveChangesAsync();
             return Ok("Your new email has been confirmed!");
         }
 
-        [HttpPost("profilePicture")]
+        [HttpPost("setProfilePicture")]
         public ActionResult PostProfilePicture(IFormFile file)
         {
             User? user = (User?) HttpContext.Items["User"];
@@ -103,8 +105,6 @@ namespace Task1.Controllers
             }
             try
             {
-                //IFormFile file = Request.Form.Files.FirstOrDefault();
-
                 if (file == null) { return BadRequest("No file was provided"); }
                 if (file.Length > (2 * 1024 * 1024)) { return BadRequest("File size must be less than 2 MB"); }
 
@@ -127,50 +127,49 @@ namespace Task1.Controllers
             
         }
 
-        [HttpPut("update")]
-        public ActionResult Update([FromBody] UserUpdateRequest request)
+        [HttpPut("updateUser")] // NOT DONE
+        public async Task<ActionResult> UpdateUser([FromBody] UserUpdateRequest request)
         {
-            var token = HttpContext.Request.Headers["Authorization"].FirstOrDefault()?.Split(" ").Last();
-            if (token == null) { return Unauthorized(); }
-            int? id = _jwtUtils.GetIdFromToken(token);
-            if (id != null)
+            User? user = (User?)HttpContext.Items["User"];
+            if (user == null)
             {
-                User? user = _userService.GetById(id.Value);
-                if (user == null) { return BadRequest("User not found!"); }
-                user.FirstName = request.FirstName;
-                user.LastName = request.LastName;
+                return Unauthorized();
+            }
+            var oldEmail = user.Email;
+            try
+            {
+                user.FirstName = request.FirstName.Length == 0 ? user.FirstName : request.FirstName;
+                user.LastName = request.LastName.Length == 0 ? user.LastName : request.LastName;
                 if (request.Email != user.Email)
                 {
                     string code = random.Next(0, 99999).ToString("D6");
-                    _context.UnconfirmedUsers.Add(new UnconfirmedUser
-                    {
-                        FirstName = user.FirstName,
-                        LastName = user.LastName,
-                        Email = request.Email,
-                        ConfirmationCode = code,
-                        Password = user.Password
-                    });
-                    _context.Users.Remove(user);
+                    user.ConfirmationCode = code;
+                    user.Confirmed = false;
+                    user.Email = request.Email;
+                    _context.Users.Update(user);
                     bool emailSent = _emailService.SendEmail(new EmailRequest { To = request.Email, Subject = "Email change request", Body = $"Please confirm your new email by sending us this confirmation code: {code}" });
                     if (emailSent)
                     {
-                        _context.SaveChanges();
-                        return Ok("Update done successfully, you need to confirm your new email");
+                        await _context.SaveChangesAsync();
+                        return Ok("Update done successfully, we sent you a confirmation code to allow you to confirm your new email.");
                     }
                     else
                     {
-                        return BadRequest(new { message = "Your new email is invalid!" });
+                        return BadRequest(new { message = "Your new email is invalid! Please use a valid email" });
                     }
-                    
                 }
                 else
                 {
                     _context.Users.Update(user);
-                    _context.SaveChanges();
+                    await _context.SaveChangesAsync();
                     return Ok("Update done successfully");
                 }
             }
-            return Unauthorized(); ;
+            catch (Exception e)
+            {
+                return BadRequest(e);
+            }
+            
         }
     }
 }
