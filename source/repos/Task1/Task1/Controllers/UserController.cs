@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Mvc;
 using Task1.Data;
 using Task1.Models;
 using BCrypt.Net;
-using Task1.Authorization;
 
 namespace Task1.Controllers
 {
@@ -26,7 +25,7 @@ namespace Task1.Controllers
             _jwtUtils = jwtUtils;
         }
 
-        [HttpPost("changePassword")]
+        [HttpPost("changePassword")] // TESTED
         public ActionResult ChangePassword([FromBody] NewPasswordRequest request)
         {
             User? user = _context.Users.Where(x => x.Email == request.Email).FirstOrDefault();
@@ -41,7 +40,7 @@ namespace Task1.Controllers
             return Ok("Password changed");
         }
 
-        [HttpPost("register")] 
+        [HttpPost("register")] // TESTED
         public async Task<ActionResult> Register([FromBody] UserRegisterRequest request)
         {
             User? AlreadyExistingUser = _context.Users.Where(u => u.Email == request.Email).FirstOrDefault();
@@ -63,7 +62,7 @@ namespace Task1.Controllers
                 }
                 else
                 {
-                    return BadRequest(new { message = "Could not register user!" });
+                    return BadRequest(new { message = "Something went wrong with your email" });
                 }
             }
             catch (Exception e)
@@ -73,7 +72,7 @@ namespace Task1.Controllers
             
         }
 
-        [HttpPost("authenticate")]
+        [HttpPost("authenticate")] // TESTED
         public ActionResult Authenticate([FromBody] UserLoginRequest request)
         {
             User? user = _context.Users.Where(x => x.Email == request.Email).FirstOrDefault();
@@ -83,26 +82,22 @@ namespace Task1.Controllers
             return Ok(new { message = "You have been logged in!", token = token });
         }
 
-        [HttpPut("confirmNewEmail")]
+        [HttpPut("confirmNewEmail")] // TESTED
         public async Task<ActionResult> ConfirmNewEmail([Required] string confirmationCode, [Required] string newEmail)
         {
             User? unconfirmedUser = _context.Users.Where(x => x.Email == newEmail).FirstOrDefault();
-            if (unconfirmedUser == null) { return BadRequest("This email is not unconfirmed"); }
+            if (unconfirmedUser == null) { return BadRequest("You do not own an account! (You must register first)"); }
             if (confirmationCode != unconfirmedUser.ConfirmationCode) { return BadRequest("Incorrect confirmation code, please check your email to get the correct one"); }
             unconfirmedUser.ConfirmationCode = null;
             unconfirmedUser.Confirmed = true;
             await _context.SaveChangesAsync();
             return Ok("Your new email has been confirmed!");
         }
-
-        [HttpPost("setProfilePicture")]
-        public ActionResult PostProfilePicture(IFormFile file)
+        [Authorize]
+        [HttpPost("setProfilePicture")] // TESTED
+        public async Task<ActionResult> PostProfilePicture(IFormFile file)
         {
             User? user = (User?) HttpContext.Items["User"];
-            if (user == null)
-            {
-                return Unauthorized();
-            }
             try
             {
                 if (file == null) { return BadRequest("No file was provided"); }
@@ -111,37 +106,40 @@ namespace Task1.Controllers
                 var extension = Path.GetExtension(file.FileName).ToLower();
                 if (extension != ".jpg" && extension != ".png") { return BadRequest("File must be in jpg or png format"); }
 
-                string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", file.FileName);
-                var stream = new FileStream(uploadPath, FileMode.Create);
-                file.CopyTo(stream);
+                string imgName = $"{user.Email}{extension}";
+                string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", imgName);
+                if (System.IO.File.Exists(uploadPath))
+                {
+                    System.IO.File.Delete(uploadPath);
+                }
+                using (var stream = new FileStream(uploadPath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }  
                 user.ImagePath = uploadPath;
                 _context.Users.Update(user);
-                _context.SaveChanges();
+                await _context.SaveChangesAsync();
 
-                return Ok($"Received file {file.FileName} with size in bytes {file.Length}");
+                return Ok("Profile picture successfully uploaded");
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                return BadRequest("An error occured with the file");
+                return BadRequest(e);
             }
             
         }
-
-        [HttpPut("updateUser")] // NOT DONE
+        [Authorize]
+        [HttpPut("updateUser")] // TESTED
         public async Task<ActionResult> UpdateUser([FromBody] UserUpdateRequest request)
         {
             User? user = (User?)HttpContext.Items["User"];
-            if (user == null)
-            {
-                return Unauthorized();
-            }
-            var oldEmail = user.Email;
             try
             {
                 user.FirstName = request.FirstName.Length == 0 ? user.FirstName : request.FirstName;
                 user.LastName = request.LastName.Length == 0 ? user.LastName : request.LastName;
                 if (request.Email != user.Email)
                 {
+                    if (_context.Users.Where(u => u.Email == request.Email).Any()) { return BadRequest("This email is already taken by someone else!"); }
                     string code = random.Next(0, 99999).ToString("D6");
                     user.ConfirmationCode = code;
                     user.Confirmed = false;

@@ -4,11 +4,11 @@ global using System.ComponentModel.DataAnnotations;
 global using Task1.Data;
 global using System.Text.Json.Serialization;
 global using Microsoft.AspNetCore.Mvc.ModelBinding;
-
+global using Task1.Authorization;
+global using System.ComponentModel.DataAnnotations.Schema;
 
 
 using Microsoft.EntityFrameworkCore;
-using Task1.Authorization;
 
 
 var builder = WebApplication.CreateBuilder(args);

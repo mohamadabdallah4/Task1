@@ -13,16 +13,16 @@ namespace Task1.Controllers
         {
             _context = context;
         }
-        [HttpGet("getBrands")]
+        [HttpGet("getBrands")] // TESTED
         public IAsyncEnumerable<Brand> GetAllBrands()
         {
             return _context.Brands.AsAsyncEnumerable();
         }
-        [HttpPost ("newBrand")]
+        [HttpPost ("newBrand")] // TESTED
+        [Authorize]
         public async Task<IActionResult> AddBrand(string Name)
         {
             User? user = (User?) HttpContext.Items["User"];
-            if (user == null) { return Unauthorized(); }
             if (_context.Brands.Where(b => b.Name == Name).Any()) { return BadRequest("This brand name is already taken"); }
             try
             {

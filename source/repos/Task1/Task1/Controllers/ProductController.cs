@@ -5,6 +5,7 @@ namespace Task1.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ProductController : ControllerBase
     {
         private readonly DataContext _context;
@@ -18,7 +19,6 @@ namespace Task1.Controllers
         public async Task<ActionResult> AddProduct(string name, string brandName, [Required] decimal price, [Required] IFormFile file)
         {
             User? user = (User?)HttpContext.Items["User"];
-            if (user == null) { return Unauthorized(); }
             Brand? brand = await _context.Brands.FindAsync(brandName);
             if (brand == null) { return BadRequest("No such brand exists"); }
             Store? store = _context.Stores.Where(s => s.User == user).FirstOrDefault();
@@ -54,7 +54,6 @@ namespace Task1.Controllers
         public async Task<ActionResult> DeleteProduct(string productName)
         {
             User? user = (User?)HttpContext.Items["User"];
-            if (user == null) { return Unauthorized(); }
             Store? store = _context.Stores.Where(s => s.User == user).FirstOrDefault();
             if (store == null) { return BadRequest("You do not own a store"); }
             Product? product = _context.Products.Where(p => p.Name == productName && p.Store == store && p.User == user).FirstOrDefault(); // REVIEW THIS TO SEE IF WORKS
@@ -77,7 +76,6 @@ namespace Task1.Controllers
         public ActionResult GetDeletedProducts()
         {
             User? user = (User?)HttpContext.Items["User"];
-            if (user == null) { return Unauthorized(); }
             IEnumerable<Product> products = _context.Products.Where(p => p.deleted == true).ToArray();
             return Ok(products);
         }
@@ -86,7 +84,6 @@ namespace Task1.Controllers
         public async Task<ActionResult> RecoverDeletedProduct(string productName)
         {
             User? user = (User?)HttpContext.Items["User"];
-            if (user == null) { return Unauthorized(); }
             Store? store = _context.Stores.Where(s => s.User == user).FirstOrDefault();
             if (store == null) { return BadRequest("You do not own a store"); }
             Product? product = _context.Products.Where(p => p.deleted == true && p.Name == productName && p.Store == store && p.User == user).FirstOrDefault();
@@ -107,7 +104,6 @@ namespace Task1.Controllers
         public async Task<ActionResult> EditProduct(decimal newPrice, string newName, string oldName)
         {
             User? user = (User?)HttpContext.Items["User"];
-            if (user == null) { return Unauthorized(); }
             Store? store = _context.Stores.Where(s => s.User == user).FirstOrDefault();
             if (store == null) { return BadRequest("You do not own a store"); }
             Product? product = _context.Products.Where(p => p.Name == oldName && p.Store == store && p.User == user).FirstOrDefault(); // REVIEW THIS TO SEE IF WORKS

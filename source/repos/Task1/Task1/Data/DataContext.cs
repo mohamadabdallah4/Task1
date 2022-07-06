@@ -12,9 +12,5 @@ namespace Task1.Data
         public DbSet<Brand> Brands { get; set; }
         public DbSet<StoreAddress> StoreAddresses { get; set; }
         public DbSet<Product> Products { get; set; }
-        protected override void OnModelCreating(ModelBuilder modelBuilder)
-        {
-            modelBuilder.Entity<StoreAddress>().HasKey(s => new { s.AddressName, s.StoreName });
-        }
     }
 }

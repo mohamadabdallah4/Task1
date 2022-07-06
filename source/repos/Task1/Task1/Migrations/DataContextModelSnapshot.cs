@@ -87,7 +87,7 @@ namespace Task1.Migrations
                     b.Property<string>("BrandName")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int?>("UserId")
+                    b.Property<int>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Name");
@@ -101,17 +101,24 @@ namespace Task1.Migrations
 
             modelBuilder.Entity("Task1.Models.StoreAddress", b =>
                 {
-                    b.Property<string>("AddressName")
-                        .HasColumnType("nvarchar(450)");
+                    b.Property<int>("StoreAddressId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
 
-                    b.Property<string>("StoreName")
-                        .HasColumnType("nvarchar(450)");
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("StoreAddressId"), 1L, 1);
+
+                    b.Property<string>("AddressName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("Status")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.HasKey("AddressName", "StoreName");
+                    b.Property<string>("StoreName")
+                        .HasColumnType("nvarchar(450)");
+
+                    b.HasKey("StoreAddressId");
 
                     b.HasIndex("StoreName");
 
@@ -216,7 +223,9 @@ namespace Task1.Migrations
 
                     b.HasOne("Task1.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId");
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Brand");
 
@@ -227,9 +236,7 @@ namespace Task1.Migrations
                 {
                     b.HasOne("Task1.Models.Store", "Store")
                         .WithMany("Addresses")
-                        .HasForeignKey("StoreName")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("StoreName");
 
                     b.Navigation("Store");
                 });
