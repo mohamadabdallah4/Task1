@@ -115,7 +115,7 @@ namespace Task1.Controllers
             {
                 var extension = Path.GetExtension(file.FileName);
                 string imgName = $"{product.Name}{extension}";
-                string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", imgName);
+                string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "General\\ProductPictures", imgName);
                 if (System.IO.File.Exists(product.ImagePath))
                 {
                     System.IO.File.Delete(product.ImagePath);

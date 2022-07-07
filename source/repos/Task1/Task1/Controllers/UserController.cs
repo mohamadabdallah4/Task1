@@ -105,7 +105,7 @@ namespace Task1.Controllers
             {
                 var extension = Path.GetExtension(file.FileName).ToLower();
                 string imgName = $"{user.Email}{extension}";
-                string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", imgName);
+                string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "General\\ProfilePictures", imgName);
                 if (System.IO.File.Exists(uploadPath))
                 {
                     System.IO.File.Delete(uploadPath);

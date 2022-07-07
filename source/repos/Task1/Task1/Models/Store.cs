@@ -9,6 +9,7 @@
         [JsonIgnore]
         public User? User { get; set; }
         public IEnumerable<Product>? Products { get; set; } 
-        public IEnumerable<StoreAddress>? Addresses { get; set; } 
+        public IEnumerable<StoreAddress>? Addresses { get; set; }
+        public string ImagePath { get; set; } = string.Empty;
     }
 }

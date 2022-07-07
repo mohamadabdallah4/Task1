@@ -8,6 +8,7 @@ namespace Task1.Controllers
     public class StoreController : ControllerBase
     {
         private readonly DataContext _context;
+        private const int maxFileSize = 2 * 1024 * 1024;
 
         public StoreController(DataContext context)
         {
@@ -27,7 +28,31 @@ namespace Task1.Controllers
             await _context.SaveChangesAsync();
             return Ok("Store created successfully");
         }
+        
+        [HttpPatch("setStoreLogo")]
+        public async Task<ActionResult> SetStoreLogo([Required][AllowedExtensions(new string[] { ".jpg", ".png" })][MaxFileSize(maxFileSize)] IFormFile file)
+        {
+            User? user = (User?)HttpContext.Items["User"];
+            Store? store = _context.Stores.Where(s => s.User == user).FirstOrDefault();
+            if (store == null) { return BadRequest("You do not own a store"); }
+            var extension = Path.GetExtension(file.FileName).ToLower();
+            string imgName = $"{store.Name}{extension}";
+            string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "General\\Logos", imgName);
+            if (System.IO.File.Exists(uploadPath))
+            {
+                System.IO.File.Delete(uploadPath);
+            }
+            using (var stream = new FileStream(uploadPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
+            }
+            store.ImagePath = uploadPath;
+            _context.Stores.Update(store);
+            await _context.SaveChangesAsync();
 
+            return Ok($"Logo for store {store.Name} has been added");
+        }
+        
         [HttpGet("getStore")] // TESTED
         public ActionResult GetStore()
         {
