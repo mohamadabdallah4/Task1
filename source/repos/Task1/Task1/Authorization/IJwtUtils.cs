@@ -4,5 +4,6 @@
     {
         string GenerateToken(User user);
         int? GetIdFromToken(string token);
+        string? GetIATFromToken(string token);
     }
 }

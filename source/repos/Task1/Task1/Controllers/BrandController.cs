@@ -13,12 +13,12 @@ namespace Task1.Controllers
         {
             _context = context;
         }
-        [HttpGet("getBrands")] // TESTED
+        [HttpGet("getAllBrands")] // TESTED
         public IAsyncEnumerable<Brand> GetAllBrands()
         {
-            return _context.Brands.AsAsyncEnumerable();
+            return _context.Brands.Include(b => b.User).AsAsyncEnumerable();
         }
-        [HttpPost ("newBrand")] // TESTED
+        [HttpPost ("addNewBrand")] // TESTED
         [Authorize]
         public async Task<IActionResult> AddBrand(string Name)
         {

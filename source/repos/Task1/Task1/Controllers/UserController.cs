@@ -1,8 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
-using Task1.Data;
-using Task1.Models;
-using BCrypt.Net;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace Task1.Controllers
 {
@@ -15,7 +11,7 @@ namespace Task1.Controllers
         private readonly IEmailService _emailService;
         private readonly IJwtUtils _jwtUtils;
         private Random random = new Random();
-
+        private const int maxFileSize = 2 * 1024 * 1024;
 
         public UserController(DataContext context, IUserService userService, IEmailService emailService, IJwtUtils jwtUtils)
         {
@@ -34,6 +30,7 @@ namespace Task1.Controllers
             var hashedPassword = BCrypt.Net.BCrypt.HashPassword(request.NewPassword);
             if (_context.UserPasswords.AsEnumerable().Where(x => { return x.Email == request.Email && BCrypt.Net.BCrypt.Verify(request.NewPassword,x.Password); }).Any()) { return BadRequest("You cannot use one of your old passwords"); }
             user.Password = hashedPassword;
+            user.LastPasswordChange = DateTime.UtcNow.ToString(); 
             _context.Users.Update(user);
             _context.UserPasswords.Add(new UserPassword { Email = user.Email, Password = user.Password });
             _context.SaveChanges();
@@ -48,7 +45,13 @@ namespace Task1.Controllers
 
             string RandomPassword = _userService.GeneratePassword();
 
-            User user = new User { FirstName = request.FirstName, LastName = request.LastName, Email = request.Email, Password = BCrypt.Net.BCrypt.HashPassword(RandomPassword) };
+            User user = new User { 
+                FirstName = request.FirstName, 
+                LastName = request.LastName, 
+                Email = request.Email, 
+                Password = BCrypt.Net.BCrypt.HashPassword(RandomPassword),
+                LastPasswordChange = DateTime.UtcNow.ToString() 
+            };
             try
             {
                 _context.Users.Add(user);
@@ -94,18 +97,13 @@ namespace Task1.Controllers
             return Ok("Your new email has been confirmed!");
         }
         [Authorize]
-        [HttpPost("setProfilePicture")] // TESTED
-        public async Task<ActionResult> PostProfilePicture(IFormFile file)
+        [HttpPatch("setProfilePicture")] // TESTED
+        public async Task<ActionResult> PostProfilePicture([Required] [AllowedExtensions(new string[] { ".jpg", ".png" })][MaxFileSize(maxFileSize)] IFormFile file)
         {
             User? user = (User?) HttpContext.Items["User"];
             try
             {
-                if (file == null) { return BadRequest("No file was provided"); }
-                if (file.Length > (2 * 1024 * 1024)) { return BadRequest("File size must be less than 2 MB"); }
-
                 var extension = Path.GetExtension(file.FileName).ToLower();
-                if (extension != ".jpg" && extension != ".png") { return BadRequest("File must be in jpg or png format"); }
-
                 string imgName = $"{user.Email}{extension}";
                 string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", imgName);
                 if (System.IO.File.Exists(uploadPath))

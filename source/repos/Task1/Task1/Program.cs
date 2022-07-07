@@ -6,9 +6,9 @@ global using System.Text.Json.Serialization;
 global using Microsoft.AspNetCore.Mvc.ModelBinding;
 global using Task1.Authorization;
 global using System.ComponentModel.DataAnnotations.Schema;
+global using Microsoft.EntityFrameworkCore;
 
 
-using Microsoft.EntityFrameworkCore;
 
 
 var builder = WebApplication.CreateBuilder(args);

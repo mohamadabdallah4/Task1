@@ -21,11 +21,25 @@ namespace Task1.Controllers
             if (_context.Stores.Where(s => s.User == user).Any()) { return BadRequest("You already own a store (only 1 store per user is allowed)"); }
             Brand? brand = await _context.Brands.FindAsync(request.brandName);
             if (brand == null) { return BadRequest("No such brand exists"); }
-            Store store = new Store { Name = request.storeName, Brand = brand, User = user };
+            Store store = new() { Name = request.storeName, Brand = brand, User = user };
             await _context.Stores.AddAsync(store);
             await _context.StoreAddresses.AddAsync(new StoreAddress { AddressName = request.initialStoreAddress, Store = store, Status = request.initialAddressStatus });
             await _context.SaveChangesAsync();
             return Ok("Store created successfully");
+        }
+
+        [HttpGet("getStore")] // TESTED
+        public ActionResult GetStore()
+        {
+            User? user = (User?)HttpContext.Items["User"];
+            Store? store = _context.Stores
+                .Include(s => s.Brand)
+                .Include(s => s.Products.Where(p => p.deleted == false))
+                .ThenInclude(brand => brand.User)
+                .Include(s => s.Products).Include(s => s.Addresses)
+                .Where(s => s.User == user)
+                .FirstOrDefault();
+            return store != null? Ok(store) : NotFound("You do not own a store");
         }
 
         
@@ -35,17 +49,10 @@ namespace Task1.Controllers
             User? user = (User?)HttpContext.Items["User"];
             var store = _context.Stores.Where(s => s.User == user).FirstOrDefault();
             if (store == null) { return BadRequest("You do not own a store"); }
-
-            try
-            {
-                _context.StoreAddresses.Add(new StoreAddress { AddressName = address, Store = store, Status = status });
-                await _context.SaveChangesAsync();
-                return Ok($"Address: ({address}) for store {store.Name} has been registered");
-            }
-            catch (Exception e)
-            {
-                return BadRequest(e);
-            }
+            if (_context.StoreAddresses.Where(sa => sa.AddressName == address && sa.Store == store).Any()) { { return BadRequest("You already have an address set for this location"); } }
+            _context.StoreAddresses.Add(new StoreAddress { AddressName = address, Store = store, Status = status });
+            await _context.SaveChangesAsync();
+            return Ok($"Address: ({address}) for store {store.Name} has been registered");
         }
 
         [HttpPatch("editStoreAddress")] // TESTED
@@ -102,7 +109,7 @@ namespace Task1.Controllers
             }
         }
 
-        [HttpPatch("removeStoreBrand")] // TESTED
+        [HttpPatch("unassignStoreBrand")] // TESTED
         public async Task<ActionResult> RemoveStoreBrand()
         {
             User? user = (User?)HttpContext.Items["User"];
@@ -127,7 +134,7 @@ namespace Task1.Controllers
                 store.Brand = brand;
                 _context.Stores.Update(store);
                 await _context.SaveChangesAsync();
-                return Ok(store);
+                return Ok($"Brand for your store has been changed to {brand.Name}");
             }
             catch (Exception e)
             {

@@ -1,5 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 
 namespace Task1.Controllers
 {
@@ -9,48 +8,57 @@ namespace Task1.Controllers
     public class ProductController : ControllerBase
     {
         private readonly DataContext _context;
+        private const int maxFileSize = 2 * 1024 * 1024;
 
         public ProductController(DataContext dataContext)
         {
             _context = dataContext;
         }
+        [AllowWithoutAuthorization]
+        [HttpGet("getProductByName")]
+        public async Task<ActionResult> GetProductByName(string name)
+        {
+            Product? product = await _context.Products
+                .Include(p => p.Store)
+                .Include(p => p.Brand)
+                .Include(p => p.User)
+                .Where(p => p.Name == name)
+                .FirstOrDefaultAsync();
+            return product != null? Ok(product): NotFound("We did not find a product with this name");
+        }
 
-        [HttpPost("addProduct")]
-        public async Task<ActionResult> AddProduct(string name, string brandName, [Required] decimal price, [Required] IFormFile file)
+        [HttpPost("addProduct")] // TESTED
+        public async Task<ActionResult> AddProduct(string name, string brandName, decimal price, [Required] [AllowedExtensions(new string[] { ".jpg", ".png" })] [MaxFileSize(maxFileSize)] IFormFile file)
         {
             User? user = (User?)HttpContext.Items["User"];
             Brand? brand = await _context.Brands.FindAsync(brandName);
             if (brand == null) { return BadRequest("No such brand exists"); }
             Store? store = _context.Stores.Where(s => s.User == user).FirstOrDefault();
             if (store == null) { return BadRequest("You do not own a store"); }
+            if (_context.Products.Where(p => p.Name == name).Any()) { return BadRequest("This product name was registered for another product"); }
 
-            if (file == null) { return BadRequest("No file was provided"); }
-            if (file.Length > (2 * 1024 * 1024)) { return BadRequest("File size must be less than 2 MB"); }
-
-            var extension = Path.GetExtension(file.FileName).ToLower();
-            if (extension != ".jpg" && extension != ".png") { return BadRequest("File must be in jpg or png format"); }
-
-            string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", file.FileName);
-            var stream = new FileStream(uploadPath, FileMode.Create);
-            file.CopyTo(stream);
-            try
+            var extension = Path.GetExtension(file.FileName);
+            Product product = new Product
             {
-                await _context.Products.AddAsync(new Product
-                {
-                    Name = name,
-                    Brand = brand,
-                    Store = store,
-                    User = user,
-                    Price = price,
-                    ImagePath = uploadPath
-                });
-                await _context.SaveChangesAsync();
-                return Ok("Product has been added!");
+                Name = name,
+                Brand = brand,
+                Store = store,
+                User = user,
+                Price = price
+            };
+            string imgName = $"{name}{extension}";
+            string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", imgName);
+            using (var stream = new FileStream(uploadPath, FileMode.Create))
+            {
+                await file.CopyToAsync(stream);
             }
-            catch (Exception e) { return BadRequest(e); }
+            product.ImagePath = uploadPath;
+            await _context.Products.AddAsync(product);
+            await _context.SaveChangesAsync();
+            return Ok("Product has been added!");
         }
 
-        [HttpPut("deleteProduct")]
+        [HttpPut("deleteProduct")] // TESTED
         public async Task<ActionResult> DeleteProduct(string productName)
         {
             User? user = (User?)HttpContext.Items["User"];
@@ -58,21 +66,14 @@ namespace Task1.Controllers
             if (store == null) { return BadRequest("You do not own a store"); }
             Product? product = _context.Products.Where(p => p.Name == productName && p.Store == store && p.User == user).FirstOrDefault(); // REVIEW THIS TO SEE IF WORKS
             if (product == null) { return BadRequest("This product either doesn't exist, or you do not own it"); }
-            try
-            {
-                product.deleted = true;
-                _context.Products.Update(product);
-                //_context.DeletedProducts.Add(product);
-                await _context.SaveChangesAsync();
-                return Ok("Product removed");
-            }
-            catch (Exception e)
-            {
-                return BadRequest(e);
-            }
+            if (product.deleted == true) { return BadRequest("This product has already been deleted"); } 
+            product.deleted = true;
+            _context.Products.Update(product);
+            await _context.SaveChangesAsync();
+            return Ok("Product removed");
         }
 
-        [HttpGet("getDeletedProducts")] // Test this
+        [HttpGet("getDeletedProducts")] // TESTED
         public ActionResult GetDeletedProducts()
         {
             User? user = (User?)HttpContext.Items["User"];
@@ -80,7 +81,7 @@ namespace Task1.Controllers
             return Ok(products);
         }
 
-        [HttpPut("recoverDeletedProduct")] 
+        [HttpPut("recoverDeletedProduct")] // TESTED
         public async Task<ActionResult> RecoverDeletedProduct(string productName)
         {
             User? user = (User?)HttpContext.Items["User"];
@@ -100,16 +101,31 @@ namespace Task1.Controllers
                 return BadRequest(e);
             }
         }
-        [HttpPut("editProduct")] // TEST THIS
-        public async Task<ActionResult> EditProduct(decimal newPrice, string newName, string oldName)
+        [HttpPut("editProduct")] // TESTED
+        public async Task<ActionResult> EditProduct(decimal newPrice, string newName, string oldName, [AllowedExtensions(new string[] { ".jpg", ".png" })][MaxFileSize(maxFileSize)] IFormFile? file)
         {
             User? user = (User?)HttpContext.Items["User"];
             Store? store = _context.Stores.Where(s => s.User == user).FirstOrDefault();
             if (store == null) { return BadRequest("You do not own a store"); }
             Product? product = _context.Products.Where(p => p.Name == oldName && p.Store == store && p.User == user).FirstOrDefault(); // REVIEW THIS TO SEE IF WORKS
             if (product == null) { return BadRequest("This product either doesn't exist, or you do not own it"); }
-            product.Name = newName;
-            product.Price = newPrice;
+            product.Name = newName.Length == 0 ? oldName : newName;
+            product.Price = newPrice != 0? newPrice : product.Price;
+            if (file != null)
+            {
+                var extension = Path.GetExtension(file.FileName);
+                string imgName = $"{product.Name}{extension}";
+                string uploadPath = Path.Combine(Directory.GetCurrentDirectory(), "Images", imgName);
+                if (System.IO.File.Exists(product.ImagePath))
+                {
+                    System.IO.File.Delete(product.ImagePath);
+                }
+                using (var stream = new FileStream(uploadPath, FileMode.Create))
+                {
+                    await file.CopyToAsync(stream);
+                }
+                product.ImagePath = uploadPath;
+            }
             _context.Products.Update(product);
             await _context.SaveChangesAsync();
             return Ok("Product updated");

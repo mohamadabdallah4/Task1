@@ -87,7 +87,7 @@ namespace Task1.Migrations
                     b.Property<string>("BrandName")
                         .HasColumnType("nvarchar(450)");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Name");
@@ -101,11 +101,11 @@ namespace Task1.Migrations
 
             modelBuilder.Entity("Task1.Models.StoreAddress", b =>
                 {
-                    b.Property<int>("StoreAddressId")
+                    b.Property<int>("Id")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("int");
 
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("StoreAddressId"), 1L, 1);
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"), 1L, 1);
 
                     b.Property<string>("AddressName")
                         .IsRequired()
@@ -118,7 +118,7 @@ namespace Task1.Migrations
                     b.Property<string>("StoreName")
                         .HasColumnType("nvarchar(450)");
 
-                    b.HasKey("StoreAddressId");
+                    b.HasKey("Id");
 
                     b.HasIndex("StoreName");
 
@@ -152,6 +152,10 @@ namespace Task1.Migrations
                         .HasColumnType("nvarchar(max)");
 
                     b.Property<string>("LastName")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("LastPasswordChange")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
@@ -223,9 +227,7 @@ namespace Task1.Migrations
 
                     b.HasOne("Task1.Models.User", "User")
                         .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
+                        .HasForeignKey("UserId");
 
                     b.Navigation("Brand");
 
