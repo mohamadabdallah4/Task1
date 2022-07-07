@@ -19,11 +19,15 @@ namespace Task1.Authorization
             {
                 context.Result = new JsonResult(new { message = "Unauthorized" }) { StatusCode = StatusCodes.Status401Unauthorized };
             }
+            if (user != null && user.Confirmed == false)
+            {
+                context.Result = new JsonResult(new { message = "Your account is not confirmed" }) { StatusCode = StatusCodes.Status401Unauthorized };
+            }
             if (createdAt != null && user != null)
             {
                 if (user.LastPasswordChange.CompareTo(createdAt) > 0)
                 {
-                    context.Result = new JsonResult(new { message = "Unauthorized" }) { StatusCode = StatusCodes.Status401Unauthorized };
+                    context.Result = new JsonResult(new { message = "The token you are using is not valid! (old token)" }) { StatusCode = StatusCodes.Status401Unauthorized };
                 }
             }
             
